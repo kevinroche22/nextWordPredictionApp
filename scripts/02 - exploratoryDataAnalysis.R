@@ -35,15 +35,15 @@ unigramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
         ## Build plot
         tidyTextData %>%
                 filter(dataset == name) %>%
-                count(words) %>% 
+                count(word) %>% 
                 mutate(percent = 100*(n/sum(n))) %>% 
                 slice(-n) %>% 
                 slice_max(percent, n = 10) %>%
-                ggplot(aes(x = reorder(words, percent), y = percent, fill = percent)) +
+                ggplot(aes(x = reorder(word, percent), y = percent, fill = percent)) +
                 geom_bar(stat = "identity") +
                 coord_flip() +
-                ggtitle(paste0("Top 10 Most Frequently Used Words As % Of Total - ", tools::toTitleCase(name))) +
-                labs(x = "Word", y = "Percentage") + 
+                ggtitle(paste0("Top 10 Most Frequently Used Words - ", tools::toTitleCase(name))) +
+                labs(x = "Word", y = "Percentage Of Total") + 
                 theme_bw() +
                 scale_color_tableau() +
                 theme(legend.position = "none") 
@@ -67,8 +67,8 @@ unigramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
         ## Manipulate data
         countWords <- tidyTextData %>% 
                 filter(dataset == name) %>%
-                count(words) %>%
-                filter(n >= 75) %>% 
+                count(word) %>%
+                filter(n >= 50) %>% 
                 slice_max(n, n = 300)
         
         ## Build plot
@@ -99,11 +99,11 @@ unique(names(unigramWordClouds)) %>% map(function(name) {
 })
 
 ###########
-# 2-grams #
+# Bigrams #
 ###########
 
 ## Plot top 10 most commonly used pairs of words (%) from each source
-twogramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
+bigramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
         
         ## Progress check
         print(name)
@@ -111,16 +111,16 @@ twogramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
         ## Build plot
         tidyTextData %>% 
                 filter(dataset == name,
-                       !(is.na(wordDuo))) %>% 
-                count(wordDuo) %>% 
+                       !(is.na(bigram))) %>% 
+                count(bigram) %>% 
                 mutate(percent = 100*(n/sum(n))) %>% 
                 slice(-n) %>% 
                 slice_max(percent, n = 10) %>%
-                ggplot(aes(x = reorder(wordDuo, percent), y = percent, fill = percent)) +
+                ggplot(aes(x = reorder(bigram, percent), y = percent, fill = percent)) +
                 geom_bar(stat = "identity") +
                 coord_flip() +
-                ggtitle(paste0("Top 10 Most Frequently Used Pairs Of Words As % Of Total - ", tools::toTitleCase(name))) +
-                labs(x = "Word Duo", y = "Percentage") + 
+                ggtitle(paste0("Top 10 Most Frequently Used Bigrams - ", tools::toTitleCase(name))) +
+                labs(x = "Bigram", y = "Percentage Of Total") + 
                 theme_bw() +
                 scale_color_tableau() +
                 theme(legend.position = "none") 
@@ -128,15 +128,15 @@ twogramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
 })
 
 ## Name frequency plots
-names(twogramFreqPlots) <- c("blogs", "news", "twitter")
+names(bigramFreqPlots) <- c("blogs", "news", "twitter")
 
 ## Write to EDA folder
-pwalk(list(filename = paste0("frequencyPlots/twogram/Top10FrequencyPairs - ", names(twogramFreqPlots), ".png"),
-           plot = twogramFreqPlots),
+pwalk(list(filename = paste0("frequencyPlots/bigram/Top10FrequencyPairs - ", names(bigramFreqPlots), ".png"),
+           plot = bigramFreqPlots),
       ggsave)
 
 ## Plot word clouds from each source 
-twogramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
+bigramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
         
         ## Progress check
         print(name)
@@ -144,9 +144,9 @@ twogramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
         ## Manipulate data
         countWords <- tidyTextData %>% 
                 filter(dataset == name,
-                       !(is.na(wordDuo))) %>% 
-                count(wordDuo) %>%
-                filter(n >= 30) %>% 
+                       !(is.na(bigram))) %>% 
+                count(bigram) %>%
+                filter(n >= 10) %>% 
                 slice_max(n, n = 225)
         
         ## Build plot
@@ -158,18 +158,18 @@ twogramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
 })
 
 ## Name wordclouds
-names(twogramWordClouds) <- c("blogs", "news", "twitter")
+names(bigramWordClouds) <- c("blogs", "news", "twitter")
 
 ## Write to folder
-unique(names(twogramWordClouds)) %>% map(function(name) {
+unique(names(bigramWordClouds)) %>% map(function(name) {
         
         ## Progress check
         print(name)
         
-        htmlwidgets::saveWidget(twogramWordClouds[[name]], 
-                                paste0("wordClouds/twogram/twogramWordClouds - ", name, ".html"), selfcontained = F)
-        webshot::webshot(paste0("wordClouds/twogram/twogramWordClouds - ", name, ".html"),
-                         paste0("wordClouds/twogram/twogramWordClouds - ", name, ".png"),
+        htmlwidgets::saveWidget(bigramWordClouds[[name]], 
+                                paste0("wordClouds/bigram/bigramWordClouds - ", name, ".html"), selfcontained = F)
+        webshot::webshot(paste0("wordClouds/bigram/bigramWordClouds - ", name, ".html"),
+                         paste0("wordClouds/bigram/bigramWordClouds - ", name, ".png"),
                          vwidth = 600, 
                          vheight = 600, 
                          delay = 10)
@@ -181,7 +181,7 @@ unique(names(twogramWordClouds)) %>% map(function(name) {
 ###########
 
 ## Plot top 10 most commonly used trios of words (%) from each source
-threegramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
+trigramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
         
         ## Progress check
         print(name)
@@ -189,16 +189,16 @@ threegramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
         ## Build plot
         tidyTextData %>% 
                 filter(dataset == name,
-                       !(is.na(wordTrio))) %>% 
-                count(wordTrio) %>% 
+                       !(is.na(trigram))) %>% 
+                count(trigram) %>% 
                 mutate(percent = 100*(n/sum(n))) %>% 
                 slice(-n) %>% 
                 slice_max(percent, n = 10) %>%
-                ggplot(aes(x = reorder(wordTrio, percent), y = percent, fill = percent)) +
+                ggplot(aes(x = reorder(trigram, percent), y = percent, fill = percent)) +
                 geom_bar(stat = "identity") +
                 coord_flip() +
-                ggtitle(paste0("Top 10 Most Frequently Used Trios Of Words As % Of Total - ", tools::toTitleCase(name))) +
-                labs(x = "Word Trio", y = "Percentage") + 
+                ggtitle(paste0("Top 10 Most Frequently Used Trios Of Words - ", tools::toTitleCase(name))) +
+                labs(x = "Word Trio", y = "Percentage Of Total") + 
                 theme_bw() +
                 scale_color_tableau() +
                 theme(legend.position = "none") 
@@ -206,15 +206,15 @@ threegramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
 })
 
 ## Name frequency plots
-names(threegramFreqPlots) <- c("blogs", "news", "twitter")
+names(trigramFreqPlots) <- c("blogs", "news", "twitter")
 
 ## Write to EDA folder
-pwalk(list(filename = paste0("frequencyPlots/threegram/Top10FrequencyTrios - ", names(threegramFreqPlots), ".png"),
-           plot = threegramFreqPlots),
+pwalk(list(filename = paste0("frequencyPlots/trigram/Top10FrequencyTrios - ", names(trigramFreqPlots), ".png"),
+           plot = trigramFreqPlots),
       ggsave)
 
 ## Plot word clouds from each source 
-threegramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
+trigramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
         
         ## Progress check
         print(name)
@@ -222,9 +222,9 @@ threegramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
         ## Manipulate data
         countWords <- tidyTextData %>% 
                 filter(dataset == name,
-                       !(is.na(wordTrio))) %>% 
-                count(wordTrio) %>%
-                filter(n >= 10) %>% 
+                       !(is.na(trigram))) %>% 
+                count(trigram) %>%
+                filter(n >= 3) %>% 
                 slice_max(n, n = 150)
         
         ## Build plot
@@ -236,18 +236,18 @@ threegramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
 })
 
 ## Name wordclouds
-names(threegramWordClouds) <- c("blogs", "news", "twitter")
+names(trigramWordClouds) <- c("blogs", "news", "twitter")
 
 ## Write to folder
-unique(names(threegramWordClouds)) %>% map(function(name) {
+unique(names(trigramWordClouds)) %>% map(function(name) {
         
         ## Progress check
         print(name)
         
-        htmlwidgets::saveWidget(threegramWordClouds[[name]], 
-                                paste0("wordClouds/threegram/threegramWordClouds - ", name, ".html"), selfcontained = F)
-        webshot::webshot(paste0("wordClouds/threegram/threegramWordClouds - ", name, ".html"),
-                         paste0("wordClouds/threegram/threegramWordClouds - ", name, ".png"),
+        htmlwidgets::saveWidget(trigramWordClouds[[name]], 
+                                paste0("wordClouds/trigram/trigramWordClouds - ", name, ".html"), selfcontained = F)
+        webshot::webshot(paste0("wordClouds/trigram/trigramWordClouds - ", name, ".html"),
+                         paste0("wordClouds/trigram/trigramWordClouds - ", name, ".png"),
                          vwidth = 600, 
                          vheight = 600, 
                          delay = 10)
@@ -267,16 +267,16 @@ fourgramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
         ## Build plot
         tidyTextData %>% 
                 filter(dataset == name,
-                       !(is.na(wordQuartet))) %>% 
-                count(wordQuartet) %>% 
+                       !(is.na(fourgram))) %>% 
+                count(fourgram) %>% 
                 mutate(percent = 100*(n/sum(n))) %>% 
                 slice(-n) %>% 
                 slice_max(percent, n = 10) %>%
-                ggplot(aes(x = reorder(wordQuartet, percent), y = percent, fill = percent)) +
+                ggplot(aes(x = reorder(fourgram, percent), y = percent, fill = percent)) +
                 geom_bar(stat = "identity") +
                 coord_flip() +
-                ggtitle(paste0("Top 10 Most Frequently Used Quartets Of Words As % Of Total - ", tools::toTitleCase(name))) +
-                labs(x = "Word Quartet", y = "Percentage") + 
+                ggtitle(paste0("Top 10 Most Frequently Used Quartets Of Words - ", tools::toTitleCase(name))) +
+                labs(x = "Word Quartet", y = "Percentage Of Total") + 
                 theme_bw() +
                 scale_color_tableau() +
                 theme(legend.position = "none") 
@@ -300,9 +300,9 @@ fourgramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
         ## Manipulate data
         countWords <- tidyTextData %>% 
                 filter(dataset == name,
-                       !(is.na(wordQuartet))) %>% 
-                count(wordQuartet) %>%
-                filter(n >= 3) %>% 
+                       !(is.na(fourgram))) %>% 
+                count(fourgram) %>%
+                filter(n >= 2) %>% 
                 slice_max(n, n = 100)
         
         ## Build plot
@@ -345,16 +345,16 @@ fivegramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
         ## Build plot
         tidyTextData %>% 
                 filter(dataset == name,
-                       !(is.na(wordQuintet))) %>% 
-                count(wordQuintet) %>% 
+                       !(is.na(fivegram))) %>% 
+                count(fivegram) %>% 
                 mutate(percent = 100*(n/sum(n))) %>% 
                 slice(-n) %>% 
                 slice_max(percent, n = 10) %>%
-                ggplot(aes(x = reorder(wordQuintet, percent), y = percent, fill = percent)) +
+                ggplot(aes(x = reorder(fivegram, percent), y = percent, fill = percent)) +
                 geom_bar(stat = "identity") +
                 coord_flip() +
-                ggtitle(paste0("Top 10 Most Frequently Used Quintets Of Words As % Of Total - ", tools::toTitleCase(name))) +
-                labs(x = "Word Quintet", y = "Percentage") + 
+                ggtitle(paste0("Top 10 Most Frequently Used Quintets Of Words - ", tools::toTitleCase(name))) +
+                labs(x = "Word Quintet", y = "Percentage Of Total") + 
                 theme_bw() +
                 scale_color_tableau() +
                 theme(legend.position = "none") 
@@ -378,9 +378,9 @@ fivegramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
         ## Manipulate data
         countWords <- tidyTextData %>% 
                 filter(dataset == name,
-                       !(is.na(wordQuintet))) %>% 
-                count(wordQuintet) %>%
-                filter(n >= 3) %>% 
+                       !(is.na(fivegram))) %>% 
+                count(fivegram) %>%
+                filter(n >= 2) %>% 
                 slice_max(n, n = 100)
         
         ## Build plot
@@ -416,7 +416,7 @@ unique(names(fivegramWordClouds)) %>% map(function(name) {
 
 ## Plot average sentiment scores by data source and write to sentiment analysis folder
 (tidyTextData %>% 
-        inner_join(get_sentiments("afinn"), by = c("words" = "word")) %>% 
+        inner_join(get_sentiments("afinn"), by = c("word" = "word")) %>% 
         group_by(dataset) %>% 
         ggplot(aes(x = dataset, y = value, fill = dataset)) +
         geom_boxplot() +
@@ -443,12 +443,12 @@ tfidfPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
         ## Build plot
         tidyTextData %>% 
                 group_by(dataset) %>% 
-                count(words) %>% 
-                bind_tf_idf(words, dataset, n) %>% 
+                count(word) %>% 
+                bind_tf_idf(word, dataset, n) %>% 
                 filter(dataset == name,
                        n >= 30) %>% 
                 slice_max(tf_idf, n = 10) %>% 
-                ggplot(aes(x = reorder(words, tf_idf), y = tf_idf, fill = tf_idf)) +
+                ggplot(aes(x = reorder(word, tf_idf), y = tf_idf, fill = tf_idf)) +
                 geom_bar(stat = "identity") +
                 coord_flip() +
                 ggtitle(paste0("Most Important Words By TF-IDF Score - ", tools::toTitleCase(name))) +
@@ -466,29 +466,3 @@ names(tfidfPlots) <- c("blogs", "news", "twitter")
 pwalk(list(filename = paste0("tfidfPlots/TF-IDF Plot - ", names(tfidfPlots), ".png"),
            plot = tfidfPlots),
       ggsave)
-
-########################
-# Twogram Markov Chain #
-########################
-
-count_bigrams <- function(dataset) {
-        dataset %>%
-                unnest_tokens(bigram, text, token = "ngrams", n = 2) %>%
-                separate(bigram, c("word1", "word2"), sep = " ") %>%
-                filter(!word1 %in% stop_words$word,
-                       !word2 %in% stop_words$word) %>%
-                count(word1, word2, sort = TRUE)
-}
-
-visualize_bigrams <- function(bigrams) {
-        set.seed(2016)
-        a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
-        
-        bigrams %>%
-                graph_from_data_frame() %>%
-                ggraph(layout = "fr") +
-                geom_edge_link(aes(edge_alpha = n), show.legend = FALSE, arrow = a) +
-                geom_node_point(color = "lightblue", size = 5) +
-                geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
-                theme_void()
-}
