@@ -2,7 +2,7 @@
 # Data Processing #
 ###################
 
-## This script takes the first 15k lines from each of the three data sources
+## This script takes the first 30k lines from each of the three data sources
 ## and tokenizes them using the "tm" and "tidytext" packages.
 
 ## Load packages
@@ -10,6 +10,7 @@ library(tidyverse)
 library(tm)
 library(tidytext)
 library(stopwords)
+library(quanteda)
 
 ## Set working directory
 setwd("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/rawData")
@@ -21,11 +22,15 @@ fileNames <- list.files(getwd())
 rawTextData <- fileNames %>% map_dfc(function(file) {
         
         ## Applies readLines functions to each of the three files
-        readr::read_lines(file, skip = 3, n_max = 15000)
+        readr::read_lines(file, skip = 3, n_max = 30000)
         
 })
 
 names(rawTextData) <- c("blogs", "news", "twitter")
+
+################
+# Data for EDA #
+################
 
 ## Format and clean using tm, stopwords and tidytext
 tidyTextData <- unique(names(rawTextData)) %>% map_dfr(function(name) {
@@ -43,11 +48,11 @@ tidyTextData <- unique(names(rawTextData)) %>% map_dfr(function(name) {
                 unnest_tokens(word, text) %>% # Splits text column into word tokens, flattening the table into one-token-per-row
                 anti_join(get_stopwords(source = "snowball"), by = "word") %>% 
                 group_by(id) %>% # otherwise we'd get word strings across sentences
-                mutate(stem = wordStem(word),
+                mutate(stem = SnowballC::wordStem(word),
                        bigram = paste(lag(word), word, sep = " "),
                        trigram = paste(lag(word), word, lead(word), sep = " "),
-                       wordQuartet = paste(lag(word, n = 2), lag(word), word, lead(word), sep = " "),
-                       wordQuintet = paste(lag(word, n = 2), lag(word), word, lead(word), lead(word, n = 2), sep = " "),
+                       fourgram = paste(lag(word, n = 2), lag(word), word, lead(word), sep = " "),
+                       fivegram = paste(lag(word, n = 2), lag(word), word, lead(word), lead(word, n = 2), sep = " "),
                        dataset = name) %>% # identifier for which dataset text came from
                 ungroup()
 
@@ -56,11 +61,36 @@ tidyTextData <- unique(names(rawTextData)) %>% map_dfr(function(name) {
 ## Replace word groupings that aren't full with NA - faster using base R than piping into the mapping above
 is.na(tidyTextData$bigram) <- str_detect(tidyTextData$bigram, "NA")
 is.na(tidyTextData$trigram) <- str_detect(tidyTextData$trigram, "NA")
-is.na(tidyTextData$wordQuartet) <- str_detect(tidyTextData$wordQuartet, "NA")
-is.na(tidyTextData$wordQuintet) <- str_detect(tidyTextData$wordQuintet, "NA")
+is.na(tidyTextData$fourgram) <- str_detect(tidyTextData$fourgram, "NA")
+is.na(tidyTextData$fivegram) <- str_detect(tidyTextData$fivegram, "NA")
+
+######################
+# Data for SBO Model #
+######################
+
+## Pivot data longer
+rawTextData <- rawTextData %>% 
+        pivot_longer(everything(), values_to = "text") %>% 
+        select(text)
+
+## Split into training and testing
+splitRawTextData <- rawTextData %>% 
+        initial_split(prop = 0.8)
+
+trainData <- training(splitRawTextData)
+testData <- testing(splitRawTextData)
+
+## Clean and convert to corpus
+tidyTrainData <- trainData$text %>% 
+        corpus()
+
+tidyTestData <- testData$text %>% 
+        corpus()
 
 #####################################
 ## Write results to tidyData folder #
 #####################################
 
 write_rds(tidyTextData, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyData.rds")
+write_rds(tidyTrainData, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyTrainData.rds")
+write_rds(tidyTestData, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyTestData.rds")
