@@ -2,7 +2,8 @@
 # Data Modeling #
 #################
 
-## In this section we x
+## In this section we build a stupid backoff model (sbo) to predict the
+## next word based on the previous n-grams (in this case, I use 5)
 
 ## Load packages
 library(tidyverse)
