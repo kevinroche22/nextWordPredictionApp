@@ -32,6 +32,9 @@ names(rawTextData) <- c("blogs", "news", "twitter")
 # Data for EDA #
 ################
 
+## Define cleaning function used to replace desired regex patterns with a space
+cleaningFn <- content_transformer(function(x, pattern) str_replace_all(pattern, " ", x))
+
 ## Format and clean using tm, stopwords and tidytext
 tidyTextData <- unique(names(rawTextData)) %>% map_dfr(function(name) {
         
@@ -44,6 +47,9 @@ tidyTextData <- unique(names(rawTextData)) %>% map_dfr(function(name) {
                 tm_map(removePunctuation) %>% # Remove punctuation
                 tm_map(stripWhitespace) %>% # Strip whitespace
                 tm_map(content_transformer(tolower)) %>% # Make lowercase
+                tm_map(cleaningFn, "@[^\\s]+") %>%  # Remove twitter handles
+                tm_map(cleaningFn, "(f|ht)tp(s?)://(.*)[.][a-z]+") %>% # Remove url's
+                tm_map(cleaningFn, "\\b[A-Za-z0-9._-]*[@](.*?)[.]{1,3}\\b") %>% # Remove email addresses
                 tidy() %>% # tidy returns a tbl_df with one-row-per-document
                 unnest_tokens(word, text) %>% # Splits text column into word tokens, flattening the table into one-token-per-row
                 anti_join(get_stopwords(source = "snowball"), by = "word") %>% 
