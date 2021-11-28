@@ -4,7 +4,8 @@
 
 ## In this section we compute and plot the top 10 most common single words,
 ## word pairs, word trios, word quartets, and word quintets, and then plot
-## their associated word clouds.
+## their associated word clouds. We also create summary stats, build tf-idf 
+## plots and perform sentiment analysis.
 
 ## Load packages
 library(tidyverse)
@@ -16,11 +17,64 @@ library(tidytext)
 ## Set working directory
 setwd("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/")
 
-## List of file names
+## List of file names for tidy data
 tidyDataFolder <- "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/"
 
 ## Read in tidy data
 tidyTextData <- read_rds(file = paste0(tidyDataFolder, "tidyData.rds"))
+
+## List of file names for raw data
+rawDataFileNames <- paste0("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/rawData/",
+                           list.files("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/rawData/"))
+
+## Read in raw data
+rawTextData <- rawDataFileNames %>% map_dfc(function(file) {
+        
+        ## Applies readLines functions to each of the three files
+        readr::read_lines(file, skip = 3, n_max = 30000)
+        
+})
+
+## Name raw data
+names(rawTextData) <- c("blogs", "news", "twitter")
+
+#################
+# Summary Stats #
+#################
+
+## Calculate file size
+fileSizes <- rawDataFileNames %>% map_dfc(function(file) {
+        
+        ## Return file size
+        paste0(round(file.size(file) / 1000000, 2), " mb")
+        
+})
+
+## Summarize raw data
+rawDataSummary <- rawDataFileNames %>% map_dfr(function(file) {
+        
+        ## Applies readLines functions to each of the three files
+        rawFile <- readLines(file)
+        
+        ## Return stats
+        stringi::stri_stats_general(rawFile) 
+        
+})
+
+## Add descriptive column and reorder
+rawDataSummary <- rawDataSummary %>% 
+        mutate(file = c("blogs", "news", "twitter")) %>% 
+        bind_cols(fileSize = t(fileSizes)) %>% 
+        relocate(file) %>% 
+        select(-c("LinesNEmpty", "CharsNWhite")) %>% # Not particularly useful information imo
+        as.matrix() %>%
+        as.data.frame() # Has to be in df format to write but first needed to convert to matrix due to transpose
+
+## Name columns
+names(rawDataSummary) <- c("file", "numberOfLines", "numberOfCharacters", "fileSize")
+
+## Write to folder
+write_csv(rawDataSummary, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/summaryStats/summaryStats.csv")
 
 ############
 # Unigrams #
@@ -68,8 +122,8 @@ unigramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
         countWords <- tidyTextData %>% 
                 filter(dataset == name) %>%
                 count(word) %>%
-                filter(n >= 50) %>% 
-                slice_max(n, n = 300)
+                filter(n >= 3) %>% 
+                slice_max(n, n = 100)
         
         ## Build plot
         wordcloud2(data = countWords, 
@@ -146,8 +200,8 @@ bigramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
                 filter(dataset == name,
                        !(is.na(bigram))) %>% 
                 count(bigram) %>%
-                filter(n >= 10) %>% 
-                slice_max(n, n = 225)
+                filter(n >= 3) %>% 
+                slice_max(n, n = 100)
         
         ## Build plot
         wordcloud2(data = countWords, 
@@ -225,7 +279,7 @@ trigramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
                        !(is.na(trigram))) %>% 
                 count(trigram) %>%
                 filter(n >= 3) %>% 
-                slice_max(n, n = 150)
+                slice_max(n, n = 100)
         
         ## Build plot
         wordcloud2(data = countWords, 
