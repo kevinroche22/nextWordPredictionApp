@@ -1,0 +1,907 @@
+---
+title: "Swiftkey Text Mining and Analytics Project - Milestone Report"
+author: "Kevin Roche"
+date: "24/11/2021"
+output: 
+    html_document:
+          toc: true
+          toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+## Load packages
+library(tidyverse)
+library(knitr)
+```
+
+# Overview
+
+This report serves to provide a summary of the preliminary analysis I've done on my Swiftkey text mining and analytics project. 
+
+The goal of the project is to develop a shiny application that can be used to predict the next word in a string of text. So far, the project is made up of three scripts:
+
+* [01 - dataProcessing.R](https://github.com/kevinroche22/SwiftkeyTextMiningAndAnalytics/blob/main/scripts/01%20-%20dataProcessing.R) reads in the data, cleans it, processes it, and saves the result to the *tidyData* folder.
+* [02 - exploratoryDataAnalysis.R](https://github.com/kevinroche22/SwiftkeyTextMiningAndAnalytics/blob/main/scripts/02%20-%20exploratoryDataAnalysis.R) constructs plots depicting the most popular n-grams for each source, sentiment analysis plots, TF-IDF plots, and word clouds. Summary stats are also calculated in this script. Results are saved to the *EDACharts* and *dataSamples* folders, respectively.
+* [03 - dataModeling.R](https://github.com/kevinroche22/SwiftkeyTextMiningAndAnalytics/blob/main/scripts/03%20-%20dataModeling.R) develops a Stupid Back Off (SBO) model to predict the next word in a sentence based off of the previous 5 words. The model is saved to the *models* folder.
+
+The code for these scripts is displayed in the [appendix.](#appendix)
+
+# Summary Stats
+
+Before I begin manipulating the data into corpus format, let's take a quick look at the summary statistics. Here I've calculated:
+
+- The number of lines in each file.
+- The number of characters in each file.
+- The size of each file.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+## Load summary stats
+read_csv("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/dataSamples/summaryStats.csv") %>% 
+        kable(caption = "Summary Stats",
+              format = "simple",
+              col.names = c("file", 
+                            "Number of lines", 
+                            "Number of characters", 
+                            "File size"))
+```
+
+# Data Processing
+
+## Raw Data
+
+The datasets are too large to use in their entirety, so I had to strike a balance between ensuring I had a large enough sample size and ensuring I could manipulate the data without crashing R. To do this, I chose to:
+
+- Read in every third line from each file, just in case there's some undocumented correlation between adjacent lines.
+- Cap the number of lines read in at 30k per data source, which translates to nearly 1.5m words after cleaning.
+
+1.5m words makes for a more than sufficient sample size, and still allows for a reasonable performance time when modeling. The raw data (written to the *dataSamples* folder so that it can be presented here) looks like this:
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+## Load raw data
+read_csv("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/dataSamples/rawDataSample.csv") %>%
+        slice(1:3) %>% 
+        kable(caption = "Raw Data Sample")
+```
+
+## Data for EDA
+
+To prepare the data for Exploratory Data Analysis (EDA), I made the following manipulations:
+
+- Data was converted to VCorpus format using the `tm` package. Corpus' represent a collection of texts, with VCorpus (short for *volatile corpus*) denoting that the texts are held entirely in memory.
+- Numbers, punctuation, and whitespace were removed from the corpus.
+- All words were transformed to lowercase so that the program recognizes (for example) "hello" and "Hello" as the same word.
+- The texts in the corpus were tokenized, meaning that the text was broken into one-row-per-word tokens.
+- Stopwords (commonly used words that convey little information - think "the", "a", etc.) were removed, sourcing the widely-used "snowball" list of stopwords.
+- Word stems were computed using the `SnowballC` package.
+- Bigrams, trigrams, fourgrams and fivegrams were computed using R's `lead` and `lag` functions. If an n-gram wasn't complete (for example, if there wasn't five words in a sentence), the corresponding n-gram was replaced with NA.
+
+Once the above changes are made, the data (written to the *tidyData* folder) looks like this:
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+## Load tidy data
+read_rds("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyData.rds") %>%
+        slice(1:10) %>% 
+        kable(caption = "Tidy Data Sample")
+```
+
+## Data for SBO Model
+
+To prepare the data for the Stupid Back-Off (SBO) model, I take a different approach to preparing it:
+
+- First, I use `pivot_longer` to manipulate the data into a dataframe where each row corresponds to a line from one of the three data sources.
+- The data is then split into training and testing data. 80% of the data is used in the training set (72k observations), while 20% of the data is used in the testing set (18k observations).
+- The data is then converted to corpus format, such that each observation is transformed into its own document.
+
+A different approach is required because the cleaning parameters and tokenization are specified in the actual SBO model. At that stage, I apply the same cleaning and tokenization transformations that were applied in the [Data for EDA](#data-for-eda) section. Both the training and testing data are written to the *tidyData* folder.
+
+The training data looks like this:
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+## Load tidy training data
+trainData <- read_rds("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyTrainData.rds") %>% 
+        as.data.frame() 
+
+names(trainData) <- c("Text")
+
+trainData %>% 
+        slice(1:3) %>% 
+        kable(caption = "Training Data Sample")
+```
+
+# Exploratory Data Analysis (EDA)
+
+In this section, I compute wordclouds, n-gram frequency plots, TF-IDF frequency plots, and perform sentiment analysis.
+
+## Wordclouds
+
+Here I've included a sample of the wordclouds I've plotted. I separated the wordclouds by data source to highlight the difference in language each of the three data sources use. 
+
+### Example: Unigram Wordcloud - Blogs
+
+Unigram wordclouds don't tell too much of a story - they're most filled with common words.
+
+![](/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/wordClouds/unigram/unigramWordClouds - blogs.png)
+
+### Example: Bigram Wordcloud - News
+
+Bigram wordclouds tend to be a bit more unique. Here we're starting to see parts of phrases that you'd expect to see in the news.
+
+![](/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/wordClouds/bigram/bigramWordClouds - news.png)
+
+### Example: Trigram Wordcloud - Twitter
+
+Here we can see the trigram wordcloud for the twitter data set. After trigrams, the wordclouds become more sparse, so I haven't included them in this report.
+
+![](/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/wordClouds/trigram/trigramWordClouds - twitter.png)
+
+## N-Gram Frequency Plots
+
+In this section I've included a sample of the n-gram frequency charts I've plotted. Again, I've separated the plots by data source to highlight the difference in language that each of the three data sources use. Frequency is calculated as the percentage of the total words the n-gram makes up in the data source.
+
+### Example: Bigram Frequency - Twitter
+
+![](/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/frequencyPlots/bigram/Top10FrequencyPairs - twitter.png)
+
+### Example: Trigram Frequency - News
+
+![](/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/frequencyPlots/trigram/Top10FrequencyTrios - news.png)
+
+## TF-IDF Frequency Plots
+
+Term frequency, inverse document frequency (TF-IDF) statistics measure how important a word is to a document or a collection of documents. TF-IDF's are calculated by measuring the frequency of a word (term frequency) by its inverse document frequency, which decreases the weight for commonly used words and increases the weight for words that are not used often in a collection of documents.
+
+### Example: TF-IDF Frequency Plot - News
+
+The TF-IDF frequency plot for the news data set provides an interesting example of this. "Officer" isn't a word that's overly common in everyday conversation, but in the news - where crime is talked about far more often than in other contexts - it's used regulary, leading to it having a high TF-IDF score.
+
+![](/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/tfidfPlots/TF-IDF Plot - news.png)
+
+## Sentiment Analysis
+
+To analyze the sentiment of a text, the sentiment of the entire text is defined as the sum of the sentiment content of each individual word.
+
+There are several general-purpose lexicons that can be used to determine sentiment:
+
+- `AFINN` assigns words a score between -5 and 5, with larger numbers being considered more positive.
+- `bing` categorizes words as either "positive" or "negative".
+- `nrc` categorizes words as either "yes" or "no" for a variety of sentiments (ie. happiness, fear, etc.).
+
+I use the `AFINN` lexicon to determine the average sentiment of each of the three data sources.
+
+![](/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/sentimentAnalysis/sentimentAnalysis.png)
+
+All three data sources have a generally positive sentiment. Blogs and news have a nearly identical average sentiment, although the news has more variance in sentiment. On average, twitter is the most positive of the three data sources.
+
+This is an interesting result, because I tend to think of the news as a generally negative source of information - I would've expected its average sentiment to be lower.
+
+## SBO Prediction Model
+
+In this section I build an SBO model to predict the next word in a sentence based on the 5 previous words.
+
+### Overview
+
+SBO's are referred to as "stupid" because of their relatively simple algorithm, but this doesn't mean they're an ineffective predictor of the next word in a sentence. SBO's work as follows:
+
+- When trying to predict which word will appear next in a sentence, it will first look for the context of the word at the n-gram level (in my case, 5-gram level). If there is no 5-gram of that size, it will recurse to the (n-1)-gram and multiply its score by 0.4. The recursion ends once the model reaches unigrams.
+- For example, if I wanted to determine the probability of "you" in the sentence "Hi there, how are you?", the model would first see if the 5-gram "Hi there, how are you?" exists. If it didn't, the model would drop the most distant word and try again with the 4-gram "there, how are you?", multiplying its score by 0.4 (aka penalizing it). If it still didn't exist, it would then move to the trigram level, penalizing the score once again, and so on and so forth.
+
+### Results
+
+The model is able to predict the next word in a sentence with ~19% accuracy. While this isn't perfect, it's a serviceable baseline that can act as a point of reference while I look into more advanced methodology.
+
+# Next Steps
+
+The end goal here is to build a predictive algorithm and deploy it as a Shiny app, where the app will take a phrase as input and output its prediction of the next word.
+
+While I could accomplish this with the SBO model detailed above, I'd love to use some more advanced natural language processing such as Long Short Term Memory (LSTM). Unfortunately, the `keras` and `tensorflow` packages are primarily built for Python - and while there are wrappers to make them work in R, I've been unable to use them without my ten-year old Mac's keyboard getting hotter than the surface of the sun.
+
+In the coming weeks, I'll be looking into LSTM and other Recurrent Neural Network (RNN) techniques to determine if any of them will be feasible given my laptops computational constraints.
+
+# Appendix
+
+The appendix below displays the code I've written to process, explore, and model the data.
+
+## 01 - dataProcessing.R
+
+```{r, eval = FALSE}
+###################
+# Data Processing #
+###################
+
+## This script takes the first 30k lines from each of the three data sources
+## and tokenizes them using the "tm" and "tidytext" packages.
+
+## Load packages
+library(tidyverse)
+library(tm)
+library(tidytext)
+library(stopwords)
+library(quanteda)
+library(rsample)
+
+## Set working directory
+setwd("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/rawData")
+
+## List of file names
+fileNames <- list.files(getwd())
+
+## Read in raw data, capping the number of lines at 30k (huge files - this sample size should suffice)
+rawTextData <- fileNames %>% map_dfc(function(file) {
+        
+        ## Applies readLines functions to each of the three files
+        readr::read_lines(file, skip = 3, n_max = 30000)
+        
+})
+
+## Name data
+names(rawTextData) <- c("blogs", "news", "twitter")
+
+## Write to dataSamples folder
+write_csv(rawTextData, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/dataSamples/rawDataSample.csv")
+
+################
+# Data for EDA #
+################
+
+## Format and clean using tm, stopwords and tidytext
+tidyTextData <- unique(names(rawTextData)) %>% map_dfr(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        ## Format and build out word groupings
+        VCorpus(VectorSource(rawTextData[[name]])) %>% # Change to corpus format
+                tm_map(removeNumbers) %>% # Remove numbers
+                tm_map(removePunctuation) %>% # Remove punctuation
+                tm_map(stripWhitespace) %>% # Strip whitespace
+                tm_map(content_transformer(tolower)) %>% # Make lowercase
+                tidy() %>% # tidy returns a tbl_df with one-row-per-document
+                unnest_tokens(word, text) %>% # Splits text column into word tokens, flattening the table into one-token-per-row
+                anti_join(get_stopwords(source = "snowball"), by = "word") %>% 
+                group_by(id) %>% # otherwise we'd get word strings across sentences
+                mutate(stem = SnowballC::wordStem(word),
+                       bigram = paste(lag(word), word, sep = " "),
+                       trigram = paste(lag(word), word, lead(word), sep = " "),
+                       fourgram = paste(lag(word, n = 2), lag(word), word, lead(word), sep = " "),
+                       fivegram = paste(lag(word, n = 2), lag(word), word, lead(word), lead(word, n = 2), sep = " "),
+                       dataset = name) %>% # identifier for which dataset text came from
+                ungroup()
+
+})
+
+## Replace word groupings that aren't full with NA - faster using base R than piping into the mapping above
+is.na(tidyTextData$bigram) <- str_detect(tidyTextData$bigram, "NA")
+is.na(tidyTextData$trigram) <- str_detect(tidyTextData$trigram, "NA")
+is.na(tidyTextData$fourgram) <- str_detect(tidyTextData$fourgram, "NA")
+is.na(tidyTextData$fivegram) <- str_detect(tidyTextData$fivegram, "NA")
+
+######################
+# Data for SBO Model #
+######################
+
+## Pivot data longer
+rawTextData <- rawTextData %>% 
+        pivot_longer(everything(), values_to = "text") %>% 
+        select(text)
+
+## Split into training and testing
+splitRawTextData <- rawTextData %>% 
+        initial_split(prop = 0.8)
+
+trainData <- training(splitRawTextData)
+testData <- testing(splitRawTextData)
+
+## Convert to corpus
+tidyTrainData <- trainData$text %>% 
+        corpus()
+
+tidyTestData <- testData$text %>% 
+        corpus()
+
+#####################################
+## Write results to tidyData folder #
+#####################################
+
+write_rds(tidyTextData, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyData.rds")
+write_rds(tidyTrainData, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyTrainData.rds")
+write_rds(tidyTestData, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyTestData.rds")
+```
+
+## 02 - exploratoryDataAnalysis
+
+```{r, eval = FALSE}
+#############################
+# Exploratory Data Analysis #
+#############################
+
+## In this section we compute and plot the top 10 most common single words,
+## word pairs, word trios, word quartets, and word quintets, and then plot
+## their associated word clouds. We also create summary stats, build tf-idf 
+## plots and perform sentiment analysis.
+
+## Load packages
+library(tidyverse)
+library(ggplot2)
+library(ggthemes)
+library(wordcloud2)
+library(tidytext)
+
+## Set working directory
+setwd("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/")
+
+## List of file names for tidy data
+tidyDataFolder <- "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/"
+
+## Read in tidy data
+tidyTextData <- read_rds(file = paste0(tidyDataFolder, "tidyData.rds"))
+
+## List of file names for raw data
+rawDataFileNames <- paste0("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/rawData/",
+                           list.files("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/rawData/"))
+
+## Read in raw data
+rawTextData <- rawDataFileNames %>% map_dfc(function(file) {
+        
+        ## Applies readLines functions to each of the three files
+        readr::read_lines(file, skip = 3, n_max = 30000)
+        
+})
+
+## Name raw data
+names(rawTextData) <- c("blogs", "news", "twitter")
+
+#################
+# Summary Stats #
+#################
+
+## Calculate file size
+fileSizes <- rawDataFileNames %>% map_dfc(function(file) {
+        
+        ## Return file size
+        paste0(round(file.size(file) / 1000000, 2), " mb")
+        
+})
+
+## Summarize raw data
+rawDataSummary <- rawDataFileNames %>% map_dfr(function(file) {
+        
+        ## Applies readLines functions to each of the three files
+        rawFile <- readLines(file)
+        
+        ## Return stats
+        stringi::stri_stats_general(rawFile) 
+        
+})
+
+## Add descriptive column and reorder
+rawDataSummary <- rawDataSummary %>% 
+        mutate(file = c("blogs", "news", "twitter")) %>% 
+        bind_cols(fileSize = t(fileSizes)) %>% 
+        relocate(file) %>% 
+        select(-c("LinesNEmpty", "CharsNWhite")) %>% # Not particularly useful information imo
+        as.matrix() %>%
+        as.data.frame() # Has to be in df format to write but first needed to convert to matrix due to transpose
+
+## Name columns
+names(rawDataSummary) <- c("file", "numberOfLines", "numberOfCharacters", "fileSize")
+
+## Write to folder
+write_csv(rawDataSummary, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/dataSamples/summaryStats.csv")
+
+############
+# Unigrams #
+############
+
+## Plot top 10 most commonly used words (%) from each source
+unigramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        ## Build plot
+        tidyTextData %>%
+                filter(dataset == name) %>%
+                count(word) %>% 
+                mutate(percent = 100*(n/sum(n))) %>% 
+                slice(-n) %>% 
+                slice_max(percent, n = 10) %>%
+                ggplot(aes(x = reorder(word, percent), y = percent, fill = percent)) +
+                geom_bar(stat = "identity") +
+                coord_flip() +
+                ggtitle(paste0("Top 10 Most Frequently Used Words - ", tools::toTitleCase(name))) +
+                labs(x = "Word", y = "Percentage Of Total") + 
+                theme_bw() +
+                scale_color_tableau() +
+                theme(legend.position = "none") 
+        
+})
+
+## Name frequency plots
+names(unigramFreqPlots) <- c("blogs", "news", "twitter")
+
+## Write to EDA folder
+pwalk(list(filename = paste0("frequencyPlots/unigram/Top10FrequencyWords - ", names(unigramFreqPlots), ".png"),
+           plot = unigramFreqPlots),
+      ggsave)
+
+## Plot word clouds from each source and write to folder
+unigramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        ## Manipulate data
+        countWords <- tidyTextData %>% 
+                filter(dataset == name) %>%
+                count(word) %>%
+                filter(n >= 3) %>% 
+                slice_max(n, n = 100)
+        
+        ## Build plot
+        wordcloud2(data = countWords, 
+                   size = 1,
+                   backgroundColor = "black",
+                   shape = "circle")
+                
+})
+
+## Name wordclouds
+names(unigramWordClouds) <- c("blogs", "news", "twitter")
+
+## Write to folder
+unique(names(unigramWordClouds)) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        htmlwidgets::saveWidget(unigramWordClouds[[name]], 
+                                paste0("wordClouds/unigram/unigramWordClouds - ", name, ".html"), selfcontained = F)
+        webshot::webshot(paste0("wordClouds/unigram/unigramWordClouds - ", name, ".html"),
+                         paste0("wordClouds/unigram/unigramWordClouds - ", name, ".png"),
+                         vwidth = 600, 
+                         vheight = 600, 
+                         delay = 10)
+
+})
+
+###########
+# Bigrams #
+###########
+
+## Plot top 10 most commonly used pairs of words (%) from each source
+bigramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        ## Build plot
+        tidyTextData %>% 
+                filter(dataset == name,
+                       !(is.na(bigram))) %>% 
+                count(bigram) %>% 
+                mutate(percent = 100*(n/sum(n))) %>% 
+                slice(-n) %>% 
+                slice_max(percent, n = 10) %>%
+                ggplot(aes(x = reorder(bigram, percent), y = percent, fill = percent)) +
+                geom_bar(stat = "identity") +
+                coord_flip() +
+                ggtitle(paste0("Top 10 Most Frequently Used Bigrams - ", tools::toTitleCase(name))) +
+                labs(x = "Bigram", y = "Percentage Of Total") + 
+                theme_bw() +
+                scale_color_tableau() +
+                theme(legend.position = "none") 
+        
+})
+
+## Name frequency plots
+names(bigramFreqPlots) <- c("blogs", "news", "twitter")
+
+## Write to EDA folder
+pwalk(list(filename = paste0("frequencyPlots/bigram/Top10FrequencyPairs - ", names(bigramFreqPlots), ".png"),
+           plot = bigramFreqPlots),
+      ggsave)
+
+## Plot word clouds from each source 
+bigramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        ## Manipulate data
+        countWords <- tidyTextData %>% 
+                filter(dataset == name,
+                       !(is.na(bigram))) %>% 
+                count(bigram) %>%
+                filter(n >= 3) %>% 
+                slice_max(n, n = 100)
+        
+        ## Build plot
+        wordcloud2(data = countWords, 
+                   size = 1,
+                   backgroundColor = "black",
+                   shape = "circle")
+        
+})
+
+## Name wordclouds
+names(bigramWordClouds) <- c("blogs", "news", "twitter")
+
+## Write to folder
+unique(names(bigramWordClouds)) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        htmlwidgets::saveWidget(bigramWordClouds[[name]], 
+                                paste0("wordClouds/bigram/bigramWordClouds - ", name, ".html"), selfcontained = F)
+        webshot::webshot(paste0("wordClouds/bigram/bigramWordClouds - ", name, ".html"),
+                         paste0("wordClouds/bigram/bigramWordClouds - ", name, ".png"),
+                         vwidth = 600, 
+                         vheight = 600, 
+                         delay = 10)
+        
+})
+
+###########
+# 3-grams #
+###########
+
+## Plot top 10 most commonly used trios of words (%) from each source
+trigramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        ## Build plot
+        tidyTextData %>% 
+                filter(dataset == name,
+                       !(is.na(trigram))) %>% 
+                count(trigram) %>% 
+                mutate(percent = 100*(n/sum(n))) %>% 
+                slice(-n) %>% 
+                slice_max(percent, n = 10) %>%
+                ggplot(aes(x = reorder(trigram, percent), y = percent, fill = percent)) +
+                geom_bar(stat = "identity") +
+                coord_flip() +
+                ggtitle(paste0("Top 10 Most Frequently Used Trios Of Words - ", tools::toTitleCase(name))) +
+                labs(x = "Word Trio", y = "Percentage Of Total") + 
+                theme_bw() +
+                scale_color_tableau() +
+                theme(legend.position = "none") 
+        
+})
+
+## Name frequency plots
+names(trigramFreqPlots) <- c("blogs", "news", "twitter")
+
+## Write to EDA folder
+pwalk(list(filename = paste0("frequencyPlots/trigram/Top10FrequencyTrios - ", names(trigramFreqPlots), ".png"),
+           plot = trigramFreqPlots),
+      ggsave)
+
+## Plot word clouds from each source 
+trigramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        ## Manipulate data
+        countWords <- tidyTextData %>% 
+                filter(dataset == name,
+                       !(is.na(trigram))) %>% 
+                count(trigram) %>%
+                filter(n >= 3) %>% 
+                slice_max(n, n = 100)
+        
+        ## Build plot
+        wordcloud2(data = countWords, 
+                   size = 1,
+                   backgroundColor = "black",
+                   shape = "circle")
+        
+})
+
+## Name wordclouds
+names(trigramWordClouds) <- c("blogs", "news", "twitter")
+
+## Write to folder
+unique(names(trigramWordClouds)) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        htmlwidgets::saveWidget(trigramWordClouds[[name]], 
+                                paste0("wordClouds/trigram/trigramWordClouds - ", name, ".html"), selfcontained = F)
+        webshot::webshot(paste0("wordClouds/trigram/trigramWordClouds - ", name, ".html"),
+                         paste0("wordClouds/trigram/trigramWordClouds - ", name, ".png"),
+                         vwidth = 600, 
+                         vheight = 600, 
+                         delay = 10)
+        
+})
+
+###########
+# 4-grams #
+###########
+
+## Plot top 10 most commonly used quartets of words (%) from each source
+fourgramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        ## Build plot
+        tidyTextData %>% 
+                filter(dataset == name,
+                       !(is.na(fourgram))) %>% 
+                count(fourgram) %>% 
+                mutate(percent = 100*(n/sum(n))) %>% 
+                slice(-n) %>% 
+                slice_max(percent, n = 10) %>%
+                ggplot(aes(x = reorder(fourgram, percent), y = percent, fill = percent)) +
+                geom_bar(stat = "identity") +
+                coord_flip() +
+                ggtitle(paste0("Top 10 Most Frequently Used Quartets Of Words - ", tools::toTitleCase(name))) +
+                labs(x = "Word Quartet", y = "Percentage Of Total") + 
+                theme_bw() +
+                scale_color_tableau() +
+                theme(legend.position = "none") 
+        
+})
+
+## Name frequency plots
+names(fourgramFreqPlots) <- c("blogs", "news", "twitter")
+
+## Write to EDA folder
+pwalk(list(filename = paste0("frequencyPlots/fourgram/Top10FrequencyQuartets - ", names(fourgramFreqPlots), ".png"),
+           plot = fourgramFreqPlots),
+      ggsave)
+
+## Plot word clouds from each source 
+fourgramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        ## Manipulate data
+        countWords <- tidyTextData %>% 
+                filter(dataset == name,
+                       !(is.na(fourgram))) %>% 
+                count(fourgram) %>%
+                filter(n >= 2) %>% 
+                slice_max(n, n = 100)
+        
+        ## Build plot
+        wordcloud2(data = countWords, 
+                   size = 1,
+                   backgroundColor = "black",
+                   shape = "circle")
+        
+})
+
+## Name wordcloud
+names(fourgramWordClouds) <- c("blogs", "news", "twitter")
+
+## Write to folder
+unique(names(fourgramWordClouds)) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        htmlwidgets::saveWidget(fourgramWordClouds[[name]], 
+                                paste0("wordClouds/fourgram/fourgramWordClouds - ", name, ".html"), selfcontained = F)
+        webshot::webshot(paste0("wordClouds/fourgram/fourgramWordClouds - ", name, ".html"),
+                         paste0("wordClouds/fourgram/fourgramWordClouds - ", name, ".png"),
+                         vwidth = 600, 
+                         vheight = 600, 
+                         delay = 10)
+        
+})
+
+###########
+# 5-grams #
+###########
+
+## Plot top 10 most commonly used quintets of words (%) from each source
+fivegramFreqPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        ## Build plot
+        tidyTextData %>% 
+                filter(dataset == name,
+                       !(is.na(fivegram))) %>% 
+                count(fivegram) %>% 
+                mutate(percent = 100*(n/sum(n))) %>% 
+                slice(-n) %>% 
+                slice_max(percent, n = 10) %>%
+                ggplot(aes(x = reorder(fivegram, percent), y = percent, fill = percent)) +
+                geom_bar(stat = "identity") +
+                coord_flip() +
+                ggtitle(paste0("Top 10 Most Frequently Used Quintets Of Words - ", tools::toTitleCase(name))) +
+                labs(x = "Word Quintet", y = "Percentage Of Total") + 
+                theme_bw() +
+                scale_color_tableau() +
+                theme(legend.position = "none") 
+        
+})
+
+## Name frequency plots
+names(fivegramFreqPlots) <- c("blogs", "news", "twitter")
+
+## Write to EDA folder
+pwalk(list(filename = paste0("frequencyPlots/fivegram/Top10FrequencyQuintets - ", names(fivegramFreqPlots), ".png"),
+           plot = fivegramFreqPlots),
+      ggsave)
+
+## Plot word clouds from each source 
+fivegramWordClouds <- unique(tidyTextData$dataset) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        ## Manipulate data
+        countWords <- tidyTextData %>% 
+                filter(dataset == name,
+                       !(is.na(fivegram))) %>% 
+                count(fivegram) %>%
+                filter(n >= 2) %>% 
+                slice_max(n, n = 100)
+        
+        ## Build plot
+        wordcloud2(data = countWords, 
+                   size = 1,
+                   backgroundColor = "black",
+                   shape = "circle")
+        
+})
+
+## Name wordcloud
+names(fivegramWordClouds) <- c("blogs", "news", "twitter")
+
+## Write to folder
+unique(names(fivegramWordClouds)) %>% map(function(name) {
+        
+        ## Progress check
+        print(name)
+        
+        htmlwidgets::saveWidget(fivegramWordClouds[[name]], 
+                                paste0("wordClouds/fivegram/fivegramWordClouds - ", name, ".html"), selfcontained = F)
+        webshot::webshot(paste0("wordClouds/fivegram/fivegramWordClouds - ", name, ".html"),
+                         paste0("wordClouds/fivegram/fivegramWordClouds - ", name, ".png"),
+                         vwidth = 600, 
+                         vheight = 600, 
+                         delay = 10)
+        
+})
+
+######################
+# Sentiment Analysis #
+######################
+
+## Plot average sentiment scores by data source and write to sentiment analysis folder
+(tidyTextData %>% 
+        inner_join(get_sentiments("afinn"), by = c("word" = "word")) %>% 
+        group_by(dataset) %>% 
+        ggplot(aes(x = dataset, y = value, fill = dataset)) +
+        geom_boxplot() +
+        ggtitle("Average Sentiment By Data Source") +
+        labs(x = "Data Source", y = "Sentiment Value") +
+        theme_bw() +
+        scale_fill_tableau() +
+        theme(legend.position = "none")) %>% 
+        ggsave(file = paste0(getwd(), "/sentimentAnalysis/sentimentAnalysis.png"))
+
+################
+# TF-IDF Plots #
+################
+
+## TF-IDF scores account for how common a word is to determine which words
+## are most important (ie. more common than is typical) to a text
+
+## Plot 10 words with highest TF-IDF score
+tfidfPlots <- unique(tidyTextData$dataset) %>% map(function(name) {
+        
+        ## Check Progress
+        print(name)
+        
+        ## Build plot
+        tidyTextData %>% 
+                group_by(dataset) %>% 
+                count(word) %>% 
+                bind_tf_idf(word, dataset, n) %>% 
+                filter(dataset == name,
+                       n >= 30) %>% 
+                slice_max(tf_idf, n = 10) %>% 
+                ggplot(aes(x = reorder(word, tf_idf), y = tf_idf, fill = tf_idf)) +
+                geom_bar(stat = "identity") +
+                coord_flip() +
+                ggtitle(paste0("Most Important Words By TF-IDF Score - ", tools::toTitleCase(name))) +
+                labs(x = "Word", y = "Importance") + 
+                theme_bw() +
+                scale_color_tableau() +
+                theme(legend.position = "none") 
+        
+})
+
+## Name TF-IDF Plots
+names(tfidfPlots) <- c("blogs", "news", "twitter")
+
+## Write to EDA folder
+pwalk(list(filename = paste0("tfidfPlots/TF-IDF Plot - ", names(tfidfPlots), ".png"),
+           plot = tfidfPlots),
+      ggsave)
+```
+
+## 03 - dataModeling.R
+
+```{r, eval = FALSE}
+#################
+# Data Modeling #
+#################
+
+## In this section we build a stupid backoff model (sbo) to predict the
+## next word based on the previous n-grams (in this case, I use 5)
+
+## Load packages
+library(tidyverse)
+library(tidymodels)
+library(textrecipes)
+library(tensorflow)
+library(keras)
+library(sbo)
+
+## Set working directory
+setwd("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/models/")
+
+## List of file names
+tidyDataFolder <- "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/"
+
+## Read in tidy data
+trainData <- read_rds(file = paste0(tidyDataFolder, "tidyTrainData.rds"))
+testData <- read_rds(file = paste0(tidyDataFolder, "tidyTestData.rds"))
+
+###############################
+# Stupid Back Off (SBO) Model #
+###############################
+
+## Set seed
+set.seed(824) # ripKobe
+
+## Build predictor
+sboPredictor <- sbo_predictor(object = trainData, # training data
+                                            N = 5, # 5-gram model
+                                            dict = target ~ 0.75, # 75% of training corpus used in dictionary
+                                            .preprocess = sbo::preprocess, # removes anything non alphanumeric, whitespace, converts to lower, etc.
+                                            EOS = ".?!:;", # End-Of-Sentence tokens
+                                            lambda = 0.4, # Back-off penalization in SBO algorithm - parameter suggested by authors of methodology
+                                            L = 3L, # Number of predictions
+                                            filtered = c("<UNK>", "<EOS>") # Exclude the <UNK> and <EOS> tokens from predictions
+)
+
+## Evaluate Predictions
+sboEvaluation <- eval_sbo_predictor(sboPredictor, test = testData)
+
+## Determine accuracy - ~18%
+sboEvaluation %>% 
+        filter(true != "<EOS>") %>%
+        summarise(accuracyPercentage = (sum(correct)/n())*100, 
+                  accuracy = sum(correct)/n(), 
+                  uncertaintyPercentage = sqrt(accuracy * (1 - accuracy) / n()))
+
+## Stores next word probability in order of score 
+sboKGrams <- kgram_freqs(trainData, 
+                         N = 5, 
+                         dict = target ~ 0.75,
+                         .preprocess = sbo::preprocess,
+                         EOS = ".?!:;")
+
+## Example - predict top 3 words after typing
+predict(sboPredictor, "Thanks for having us, we had a great time with")
+
+## Example - all words in dictionary arranged by probability
+predict(sboKGrams, "Thanks for having us, we had a great time with")
+```
