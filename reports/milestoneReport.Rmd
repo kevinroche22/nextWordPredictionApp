@@ -176,18 +176,18 @@ All three data sources have a generally positive sentiment. Blogs and news have 
 
 This is an interesting result, because I tend to think of the news as a generally negative source of information - I would've expected its average sentiment to be lower.
 
-## SBO Prediction Model
+# SBO Prediction Model
 
 In this section I build an SBO model to predict the next word in a sentence based on the 5 previous words.
 
-### Overview
+## Overview
 
 SBO's are referred to as "stupid" because of their relatively simple algorithm, but this doesn't mean they're an ineffective predictor of the next word in a sentence. SBO's work as follows:
 
 - When trying to predict which word will appear next in a sentence, it will first look for the context of the word at the n-gram level (in my case, 5-gram level). If there is no 5-gram of that size, it will recurse to the (n-1)-gram and multiply its score by 0.4. The recursion ends once the model reaches unigrams.
 - For example, if I wanted to determine the probability of "you" in the sentence "Hi there, how are you?", the model would first see if the 5-gram "Hi there, how are you?" exists. If it didn't, the model would drop the most distant word and try again with the 4-gram "there, how are you?", multiplying its score by 0.4 (aka penalizing it). If it still didn't exist, it would then move to the trigram level, penalizing the score once again, and so on and so forth.
 
-### Results
+## Results
 
 The model is able to predict the next word in a sentence with ~19% accuracy. While this isn't perfect, it's a serviceable baseline that can act as a point of reference while I look into more advanced methodology.
 
