@@ -24,7 +24,7 @@ The goal of the project is to develop a shiny application that can be used to pr
 
 * [01 - dataProcessing.R](https://github.com/kevinroche22/SwiftkeyTextMiningAndAnalytics/blob/main/scripts/01%20-%20dataProcessing.R) reads in the data, cleans it, processes it, and saves the result to the *tidyData* folder.
 * [02 - exploratoryDataAnalysis.R](https://github.com/kevinroche22/SwiftkeyTextMiningAndAnalytics/blob/main/scripts/02%20-%20exploratoryDataAnalysis.R) constructs plots depicting the most popular n-grams for each source, sentiment analysis plots, TF-IDF plots, and word clouds. Summary stats are also calculated in this script. Results are saved to the *EDACharts* and *dataSamples* folders, respectively.
-* [03 - dataModeling.R](https://github.com/kevinroche22/SwiftkeyTextMiningAndAnalytics/blob/main/scripts/03%20-%20dataModeling.R) develops a Stupid Back Off (SBO) model to predict the next word in a sentence based off of the previous 5 words. The model is saved to the *models* folder.
+* [03 - sboModeling.R](https://github.com/kevinroche22/SwiftkeyTextMiningAndAnalytics/blob/main/scripts/03%20-%20sboModeling.R) develops a Stupid Back Off (SBO) model to predict the next word in a sentence based off of the previous 5 words. The model is saved to the *models* folder.
 
 The code for these scripts is displayed in the [appendix.](#appendix)
 
@@ -836,7 +836,7 @@ pwalk(list(filename = paste0("tfidfPlots/TF-IDF Plot - ", names(tfidfPlots), ".p
       ggsave)
 ```
 
-## 03 - dataModeling.R
+## 03 - sboModeling.R
 
 ```{r, eval = FALSE}
 #################
