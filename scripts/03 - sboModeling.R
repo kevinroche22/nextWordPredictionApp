@@ -9,8 +9,6 @@
 library(tidyverse)
 library(tidymodels)
 library(textrecipes)
-library(tensorflow)
-library(keras)
 library(sbo)
 
 ## Set working directory
@@ -63,3 +61,16 @@ predict(sboPredictor, "Thanks for having us, we had a great time with")
 
 ## Example - all words in dictionary arranged by probability
 predict(sboKGrams, "Thanks for having us, we had a great time with")
+
+## To be deployed in Shiny app, needs to be saved in predtable format
+sboShiny <- sbo_predtable(object = trainData, # training data
+                          N = 3, # 5-gram model
+                          dict = target ~ 0.75, # 75% of training corpus used in dictionary
+                          .preprocess = sbo::preprocess, # removes anything non alphanumeric, whitespace, converts to lower, etc.
+                          EOS = ".?!:;", # End-Of-Sentence tokens
+                          lambda = 0.4, # Back-off penalization in SBO algorithm - parameter suggested by authors of methodology
+                          L = 3L, # Number of predictions
+                          filtered = c("<UNK>", "<EOS>"))
+
+## Write model to models folder
+save(sboShiny, file = "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/models/sboShiny.rda")
