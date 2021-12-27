@@ -15,17 +15,17 @@ library(wordcloud2)
 library(tidytext)
 
 ## Set working directory
-setwd("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/")
+setwd("/Users/kevinroche22/RData/nextWordPredictionApp/EDACharts/")
 
 ## List of file names for tidy data
-tidyDataFolder <- "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/"
+tidyDataFolder <- "/Users/kevinroche22/RData/nextWordPredictionApp/tidyData/"
 
 ## Read in tidy data
 tidyTextData <- read_rds(file = paste0(tidyDataFolder, "tidyData.rds"))
 
 ## List of file names for raw data
-rawDataFileNames <- paste0("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/rawData/",
-                           list.files("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/rawData/"))
+rawDataFileNames <- paste0("/Users/kevinroche22/RData/nextWordPredictionApp/rawData/",
+                           list.files("/Users/kevinroche22/RData/nextWordPredictionApp/rawData/"))
 
 ## Read in raw data
 rawTextData <- rawDataFileNames %>% map_dfc(function(file) {
@@ -74,7 +74,7 @@ rawDataSummary <- rawDataSummary %>%
 names(rawDataSummary) <- c("file", "numberOfLines", "numberOfCharacters", "fileSize")
 
 ## Write to folder
-write_csv(rawDataSummary, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/summaryStats/summaryStats.csv")
+write_csv(rawDataSummary, "/Users/kevinroche22/RData/nextWordPredictionApp/dataSamples/summaryStats.csv")
 
 ############
 # Unigrams #

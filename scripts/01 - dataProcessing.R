@@ -11,9 +11,10 @@ library(tm)
 library(tidytext)
 library(stopwords)
 library(quanteda)
+library(rsample)
 
 ## Set working directory
-setwd("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/rawData")
+setwd("/Users/kevinroche22/RData/nextWordPredictionApp/rawData")
 
 ## List of file names
 fileNames <- list.files(getwd())
@@ -26,14 +27,15 @@ rawTextData <- fileNames %>% map_dfc(function(file) {
         
 })
 
+## Name data
 names(rawTextData) <- c("blogs", "news", "twitter")
+
+## Write to dataSamples folder
+write_csv(rawTextData, "/Users/kevinroche22/RData/nextWordPredictionApp/dataSamples/rawDataSample.csv")
 
 ################
 # Data for EDA #
 ################
-
-## Define cleaning function used to replace desired regex patterns with a space
-cleaningFn <- content_transformer(function(x, pattern) str_replace_all(pattern, " ", x))
 
 ## Format and clean using tm, stopwords and tidytext
 tidyTextData <- unique(names(rawTextData)) %>% map_dfr(function(name) {
@@ -47,9 +49,6 @@ tidyTextData <- unique(names(rawTextData)) %>% map_dfr(function(name) {
                 tm_map(removePunctuation) %>% # Remove punctuation
                 tm_map(stripWhitespace) %>% # Strip whitespace
                 tm_map(content_transformer(tolower)) %>% # Make lowercase
-                tm_map(cleaningFn, "@[^\\s]+") %>%  # Remove twitter handles
-                tm_map(cleaningFn, "(f|ht)tp(s?)://(.*)[.][a-z]+") %>% # Remove url's
-                tm_map(cleaningFn, "\\b[A-Za-z0-9._-]*[@](.*?)[.]{1,3}\\b") %>% # Remove email addresses
                 tidy() %>% # tidy returns a tbl_df with one-row-per-document
                 unnest_tokens(word, text) %>% # Splits text column into word tokens, flattening the table into one-token-per-row
                 anti_join(get_stopwords(source = "snowball"), by = "word") %>% 
@@ -86,17 +85,21 @@ splitRawTextData <- rawTextData %>%
 trainData <- training(splitRawTextData)
 testData <- testing(splitRawTextData)
 
-## Clean and convert to corpus
+## Convert to corpus
 tidyTrainData <- trainData$text %>% 
         corpus()
 
 tidyTestData <- testData$text %>% 
         corpus()
 
+tidyFullModelingData <- rawTextData$text %>% 
+        corpus()
+
 #####################################
 ## Write results to tidyData folder #
 #####################################
 
-write_rds(tidyTextData, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyData.rds")
-write_rds(tidyTrainData, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyTrainData.rds")
-write_rds(tidyTestData, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyTestData.rds")
+write_rds(tidyTextData, "/Users/kevinroche22/RData/nextWordPredictionApp/tidyData/tidyData.rds")
+write_rds(tidyTrainData, "/Users/kevinroche22/RData/nextWordPredictionApp/tidyData/tidyTrainData.rds")
+write_rds(tidyTestData, "/Users/kevinroche22/RData/nextWordPredictionApp/tidyData/tidyTestData.rds")
+write_rds(tidyFullModelingData, "/Users/kevinroche22/RData/nextWordPredictionApp/tidyData/tidyFullModelingData.rds")

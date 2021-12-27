@@ -12,14 +12,15 @@ library(textrecipes)
 library(sbo)
 
 ## Set working directory
-setwd("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/models/")
+setwd("/Users/kevinroche22/RData/nextWordPredictionApp/models/")
 
 ## List of file names
-tidyDataFolder <- "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/"
+tidyDataFolder <- "/Users/kevinroche22/RData/nextWordPredictionApp/tidyData/"
 
 ## Read in tidy data
 trainData <- read_rds(file = paste0(tidyDataFolder, "tidyTrainData.rds"))
 testData <- read_rds(file = paste0(tidyDataFolder, "tidyTestData.rds"))
+fullData <- read_rds(file = paste0(tidyDataFolder, "tidyFullModelingData.rds"))
 
 ###############################
 # Stupid Back Off (SBO) Model #
@@ -62,15 +63,46 @@ predict(sboPredictor, "Thanks for having us, we had a great time with")
 ## Example - all words in dictionary arranged by probability
 predict(sboKGrams, "Thanks for having us, we had a great time with")
 
+###########################
+# Shiny compatible models #
+###########################
+
 ## To be deployed in Shiny app, needs to be saved in predtable format
-sboShiny <- sbo_predtable(object = trainData, # training data
-                          N = 3, # 5-gram model
-                          dict = target ~ 0.75, # 75% of training corpus used in dictionary
+
+## 3-gram model
+sboShiny3 <- sbo_predtable(object = fullData, # full data
+                          N = 3, # 3-gram model
+                          dict = target ~ 0.8, # 80% of training corpus used in dictionary
                           .preprocess = sbo::preprocess, # removes anything non alphanumeric, whitespace, converts to lower, etc.
                           EOS = ".?!:;", # End-Of-Sentence tokens
                           lambda = 0.4, # Back-off penalization in SBO algorithm - parameter suggested by authors of methodology
-                          L = 3L, # Number of predictions
+                          L = 5L, # Number of predictions
                           filtered = c("<UNK>", "<EOS>"))
 
-## Write model to models folder
-save(sboShiny, file = "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/models/sboShiny.rda")
+## 4-gram model
+sboShiny4 <- sbo_predtable(object = fullData, # full data
+                          N = 4, # 4-gram model
+                          dict = target ~ 0.8, # 80% of training corpus used in dictionary
+                          .preprocess = sbo::preprocess, # removes anything non alphanumeric, whitespace, converts to lower, etc.
+                          EOS = ".?!:;", # End-Of-Sentence tokens
+                          lambda = 0.4, # Back-off penalization in SBO algorithm - parameter suggested by authors of methodology
+                          L = 5L, # Number of predictions
+                          filtered = c("<UNK>", "<EOS>"))
+
+## 5-gram model
+sboShiny5 <- sbo_predtable(object = fullData, # full data
+                          N = 5, # 5-gram model
+                          dict = target ~ 0.75, # 80% of training corpus used in dictionary
+                          .preprocess = sbo::preprocess, # removes anything non alphanumeric, whitespace, converts to lower, etc.
+                          EOS = ".?!:;", # End-Of-Sentence tokens
+                          lambda = 0.4, # Back-off penalization in SBO algorithm - parameter suggested by authors of methodology
+                          L = 5L, # Number of predictions
+                          filtered = c("<UNK>", "<EOS>"))
+
+###################
+# Write to folder #
+###################
+
+save(sboShiny3, file = "/Users/kevinroche22/RData/nextWordPredictionApp/models/sboShiny3.rda")
+save(sboShiny4, file = "/Users/kevinroche22/RData/nextWordPredictionApp/models/sboShiny4.rda")
+save(sboShiny5, file = "/Users/kevinroche22/RData/nextWordPredictionApp/models/sboShiny5.rda")
