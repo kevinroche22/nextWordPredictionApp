@@ -22,9 +22,9 @@ This report serves to provide a summary of the preliminary analysis I've done on
 
 The goal of the project is to develop a shiny application that can be used to predict the next word in a string of text. So far, the project is made up of three scripts:
 
-* [01 - dataProcessing.R](https://github.com/kevinroche22/SwiftkeyTextMiningAndAnalytics/blob/main/scripts/01%20-%20dataProcessing.R) reads in the data, cleans it, processes it, and saves the result to the *tidyData* folder.
-* [02 - exploratoryDataAnalysis.R](https://github.com/kevinroche22/SwiftkeyTextMiningAndAnalytics/blob/main/scripts/02%20-%20exploratoryDataAnalysis.R) constructs plots depicting the most popular n-grams for each source, sentiment analysis plots, TF-IDF plots, and word clouds. Summary stats are also calculated in this script. Results are saved to the *EDACharts* and *dataSamples* folders, respectively.
-* [03 - sboModeling.R](https://github.com/kevinroche22/SwiftkeyTextMiningAndAnalytics/blob/main/scripts/03%20-%20sboModeling.R) develops a Stupid Back Off (SBO) model to predict the next word in a sentence based off of the previous 5 words. The model is saved to the *models* folder.
+* [01 - dataProcessing.R](https://github.com/kevinroche22/nextWordPredictionApp/blob/main/scripts/01%20-%20dataProcessing.R) reads in the data, cleans it, processes it, and saves the result to the *tidyData* folder.
+* [02 - exploratoryDataAnalysis.R](https://github.com/kevinroche22/nextWordPredictionApp/blob/main/scripts/02%20-%20exploratoryDataAnalysis.R) constructs plots depicting the most popular n-grams for each source, sentiment analysis plots, TF-IDF plots, and word clouds. Summary stats are also calculated in this script. Results are saved to the *EDACharts* and *dataSamples* folders, respectively.
+* [03 - sboModeling.R](https://github.com/kevinroche22/nextWordPredictionApp/blob/main/scripts/03%20-%20sboModeling.R) develops a Stupid Back Off (SBO) model to predict the next word in a sentence based off of the previous 5 words. The model is saved to the *models* folder.
 
 The code for these scripts is displayed in the [appendix.](#appendix)
 
@@ -38,7 +38,7 @@ Before I begin manipulating the data into corpus format, let's take a quick look
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
 ## Load summary stats
-read_csv("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/dataSamples/summaryStats.csv") %>% 
+read_csv("/Users/kevinroche22/RData/nextWordPredictionApp/dataSamples/summaryStats.csv") %>% 
         kable(caption = "Summary Stats",
               format = "simple",
               col.names = c("file", 
@@ -60,7 +60,7 @@ The datasets are too large to use in their entirety, so I had to strike a balanc
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
 ## Load raw data
-read_csv("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/dataSamples/rawDataSample.csv") %>%
+read_csv("/Users/kevinroche22/RData/nextWordPredictionApp/dataSamples/rawDataSample.csv") %>%
         slice(1:3) %>% 
         kable(caption = "Raw Data Sample")
 ```
@@ -81,7 +81,7 @@ Once the above changes are made, the data (written to the *tidyData* folder) loo
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
 ## Load tidy data
-read_rds("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyData.rds") %>%
+read_rds("/Users/kevinroche22/RData/nextWordPredictionApp/tidyData/tidyData.rds") %>%
         slice(1:10) %>% 
         kable(caption = "Tidy Data Sample")
 ```
@@ -100,7 +100,7 @@ The training data looks like this:
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
 ## Load tidy training data
-trainData <- read_rds("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyTrainData.rds") %>% 
+trainData <- read_rds("/Users/kevinroche22/RData/nextWordPredictionApp/tidyData/tidyTrainData.rds") %>% 
         as.data.frame() 
 
 names(trainData) <- c("Text")
@@ -122,19 +122,19 @@ Here I've included a sample of the wordclouds I've plotted. I separated the word
 
 Unigram wordclouds don't tell too much of a story - they're most filled with common words.
 
-![](/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/wordClouds/unigram/unigramWordClouds - blogs.png)
+![](/Users/kevinroche22/RData/nextWordPredictionApp/EDACharts/wordClouds/unigram/unigramWordClouds - blogs.png)
 
 ### Example: Bigram Wordcloud - News
 
 Bigram wordclouds tend to be a bit more unique. Here we're starting to see parts of phrases that you'd expect to see in the news.
 
-![](/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/wordClouds/bigram/bigramWordClouds - news.png)
+![](/Users/kevinroche22/RData/nextWordPredictionApp/EDACharts/wordClouds/bigram/bigramWordClouds - news.png)
 
 ### Example: Trigram Wordcloud - Twitter
 
 Here we can see the trigram wordcloud for the twitter data set. After trigrams, the wordclouds become more sparse, so I haven't included them in this report.
 
-![](/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/wordClouds/trigram/trigramWordClouds - twitter.png)
+![](/Users/kevinroche22/RData/nextWordPredictionApp/EDACharts/wordClouds/trigram/trigramWordClouds - twitter.png)
 
 ## N-Gram Frequency Plots
 
@@ -142,11 +142,11 @@ In this section I've included a sample of the n-gram frequency charts I've plott
 
 ### Example: Bigram Frequency - Twitter
 
-![](/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/frequencyPlots/bigram/Top10FrequencyPairs - twitter.png)
+![](/Users/kevinroche22/RData/nextWordPredictionApp/EDACharts/frequencyPlots/bigram/Top10FrequencyPairs - twitter.png)
 
 ### Example: Trigram Frequency - News
 
-![](/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/frequencyPlots/trigram/Top10FrequencyTrios - news.png)
+![](/Users/kevinroche22/RData/nextWordPredictionApp/EDACharts/frequencyPlots/trigram/Top10FrequencyTrios - news.png)
 
 ## TF-IDF Frequency Plots
 
@@ -156,7 +156,7 @@ Term frequency, inverse document frequency (TF-IDF) statistics measure how impor
 
 The TF-IDF frequency plot for the news data set provides an interesting example of this. "Officer" isn't a word that's overly common in everyday conversation, but in the news - where crime is talked about far more often than in other contexts - it's used regulary, leading to it having a high TF-IDF score.
 
-![](/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/tfidfPlots/TF-IDF Plot - news.png)
+![](/Users/kevinroche22/RData/nextWordPredictionApp/EDACharts/tfidfPlots/TF-IDF Plot - news.png)
 
 ## Sentiment Analysis
 
@@ -170,7 +170,7 @@ There are several general-purpose lexicons that can be used to determine sentime
 
 I use the `AFINN` lexicon to determine the average sentiment of each of the three data sources.
 
-![](/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/sentimentAnalysis/sentimentAnalysis.png)
+![](/Users/kevinroche22/RData/nextWordPredictionApp/EDACharts/sentimentAnalysis/sentimentAnalysis.png)
 
 All three data sources have a generally positive sentiment. Blogs and news have a nearly identical average sentiment, although the news has more variance in sentiment. On average, twitter is the most positive of the three data sources.
 
@@ -222,7 +222,7 @@ library(quanteda)
 library(rsample)
 
 ## Set working directory
-setwd("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/rawData")
+setwd("/Users/kevinroche22/RData/nextWordPredictionApp/rawData")
 
 ## List of file names
 fileNames <- list.files(getwd())
@@ -239,7 +239,7 @@ rawTextData <- fileNames %>% map_dfc(function(file) {
 names(rawTextData) <- c("blogs", "news", "twitter")
 
 ## Write to dataSamples folder
-write_csv(rawTextData, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/dataSamples/rawDataSample.csv")
+write_csv(rawTextData, "/Users/kevinroche22/RData/nextWordPredictionApp/dataSamples/rawDataSample.csv")
 
 ################
 # Data for EDA #
@@ -304,9 +304,9 @@ tidyTestData <- testData$text %>%
 ## Write results to tidyData folder #
 #####################################
 
-write_rds(tidyTextData, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyData.rds")
-write_rds(tidyTrainData, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyTrainData.rds")
-write_rds(tidyTestData, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/tidyTestData.rds")
+write_rds(tidyTextData, "/Users/kevinroche22/RData/nextWordPredictionApp/tidyData/tidyData.rds")
+write_rds(tidyTrainData, "/Users/kevinroche22/RData/nextWordPredictionApp/tidyData/tidyTrainData.rds")
+write_rds(tidyTestData, "/Users/kevinroche22/RData/nextWordPredictionApp/tidyData/tidyTestData.rds")
 ```
 
 ## 02 - exploratoryDataAnalysis
@@ -329,17 +329,17 @@ library(wordcloud2)
 library(tidytext)
 
 ## Set working directory
-setwd("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/EDACharts/")
+setwd("/Users/kevinroche22/RData/nextWordPredictionApp/EDACharts/")
 
 ## List of file names for tidy data
-tidyDataFolder <- "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/"
+tidyDataFolder <- "/Users/kevinroche22/RData/nextWordPredictionApp/tidyData/"
 
 ## Read in tidy data
 tidyTextData <- read_rds(file = paste0(tidyDataFolder, "tidyData.rds"))
 
 ## List of file names for raw data
-rawDataFileNames <- paste0("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/rawData/",
-                           list.files("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/rawData/"))
+rawDataFileNames <- paste0("/Users/kevinroche22/RData/nextWordPredictionApp/rawData/",
+                           list.files("/Users/kevinroche22/RData/nextWordPredictionApp/rawData/"))
 
 ## Read in raw data
 rawTextData <- rawDataFileNames %>% map_dfc(function(file) {
@@ -388,7 +388,7 @@ rawDataSummary <- rawDataSummary %>%
 names(rawDataSummary) <- c("file", "numberOfLines", "numberOfCharacters", "fileSize")
 
 ## Write to folder
-write_csv(rawDataSummary, "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/dataSamples/summaryStats.csv")
+write_csv(rawDataSummary, "/Users/kevinroche22/RData/nextWordPredictionApp/dataSamples/summaryStats.csv")
 
 ############
 # Unigrams #
@@ -855,10 +855,10 @@ library(keras)
 library(sbo)
 
 ## Set working directory
-setwd("/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/models/")
+setwd("/Users/kevinroche22/RData/nextWordPredictionApp/models/")
 
 ## List of file names
-tidyDataFolder <- "/Users/kevinroche22/RData/SwiftkeyTextMiningAndAnalytics/tidyData/"
+tidyDataFolder <- "/Users/kevinroche22/RData/nextWordPredictionApp/tidyData/"
 
 ## Read in tidy data
 trainData <- read_rds(file = paste0(tidyDataFolder, "tidyTrainData.rds"))
