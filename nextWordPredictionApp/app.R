@@ -12,9 +12,9 @@ library(sbo)
 ########################
 
 ## Load Data
-load("/Users/kevinroche22/RData/nextWordPredictionApp/models/sboShiny3.rda") 
-load("/Users/kevinroche22/RData/nextWordPredictionApp/models/sboShiny4.rda") 
-load("/Users/kevinroche22/RData/nextWordPredictionApp/models/sboShiny5.rda") 
+load("models/sboShiny3.rda") 
+load("models/sboShiny4.rda") 
+load("models/sboShiny5.rda") 
 
 ## Load models
 sboPredictor3 <- sbo_predictor(sboShiny3) ## 3-gram model
@@ -168,3 +168,4 @@ server <- function(input, output) {
 ###########
 
 shinyApp(ui = ui, server = server)
+
